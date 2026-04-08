@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 resource "aws_instance" "web" {
-  ami           = "aami-0ea87431b78a82070" # Amazon Linux (Mumbai)
+  ami           = "ami-0ea87431b78a82070" # Amazon Linux (Mumbai)
   instance_type = "t2.micro"
 
   tags = {
