@@ -79,13 +79,18 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
+resource "aws_key_pair" "deployer" {
+  key_name   = "terraform-key"
+  public_key = file("~/.ssh/id_rsa.pub")
+}
+
 # ---------------- EC2 ----------------
 resource "aws_instance" "web" {
   ami           = "ami-0ea87431b78a82070"
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
-
+  key_name = aws_key_pair.deployer.key_name
   tags = {
     Name = "Terraform-Web"
   }
