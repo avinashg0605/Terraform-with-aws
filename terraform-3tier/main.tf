@@ -85,7 +85,8 @@ module "bastion_server" {
   ami_id ="ami-0ea87431b78a82070"
   # instance_ebs_volume = var.instance_config.ebs_volume_size
   instance_ebs_volume = 8
-  instance_type = var.instance_config.instance_type
+  # instance_type = var.instance_config.instance_type
+  instance_type = "t2.micro"
   security_group_ids = [module.bastion_sg.id]
   project_name = "hr_manager"
 
