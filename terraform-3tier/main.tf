@@ -1,97 +1,157 @@
-provider "aws" {
-  region = "us-east-1"
+resource "tls_private_key" "generated" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
 }
 
-# ---------------- VPC ----------------
-resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/16"
-
-  tags = {
-    Name = "my-vpc"
-  }
+resource "aws_key_pair" "key_pair" {
+  key_name   = "Hr_manager_bastion"
+  public_key = tls_private_key.generated.public_key_openssh
 }
 
-# ---------------- SUBNET ----------------
-resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-east-1a"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "public-subnet"
-  }
+resource "local_file" "private_key" {
+  content  = tls_private_key.generated.private_key_pem
+  filename = "Hr_manager_bastion.pem"
 }
 
-# ---------------- INTERNET GATEWAY ----------------
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "my-igw"
-  }
+module "vpc" {
+  source = "./modules/vpc"
+  vpc_cidr = "10.0.0.0/16"
+  project_name = "hr_vpc"
+  availability_zone = [ "us-east-1a","us-east-1b" ]
+  cidr_block = [ "10.0.1.0/24","10.0.2.0/24","10.0.3.0/24","10.0.4.0/24"]
 }
 
-# ---------------- ROUTE TABLE ----------------
-resource "aws_route_table" "public_rt" {
-  vpc_id = aws_vpc.main.id
+module "bastion_sg" {
+  source = "./modules/sg"
 
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-  }
+  sg_name = "bastion_sg"
+  vpc_id  = module.vpc.vpc_id
 
-  tags = {
-    Name = "public-rt"
-  }
+  ingress_rules = [
+    {
+      from_port   = 22
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+}
+module "alb_sg" {
+  source = "./modules/sg"
+
+  sg_name = "alb_sg"
+  vpc_id  = module.vpc.vpc_id
+
+  ingress_rules = [
+    {
+      from_port   = 80
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
 }
 
-# ---------------- ROUTE TABLE ASSOCIATION ----------------
-resource "aws_route_table_association" "public_assoc" {
-  subnet_id      = aws_subnet.public.id
-  route_table_id = aws_route_table.public_rt.id
+module "web_sg" {
+  source = "./modules/sg"
+
+  sg_name = "web_sg"
+  vpc_id  = module.vpc.vpc_id
+
+  ingress_rules = [
+    {
+      from_port       = 80
+      security_groups = [module.alb_sg.id]
+    }
+  ]
 }
 
-# ---------------- SECURITY GROUP ----------------
-resource "aws_security_group" "web_sg" {
-  name   = "web-sg"
-  vpc_id = aws_vpc.main.id
+module "app_sg" {
+  source = "./modules/sg"
 
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  sg_name = "app_sg"
+  vpc_id  = module.vpc.vpc_id
 
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  ingress_rules = [
+    {
+      from_port       = 8080
+      security_groups = [module.web_sg.id]
+    }
+  ]
 }
 
-resource "aws_key_pair" "deployer" {
-  key_name   = "terraform-key"
-  public_key = file("~/.ssh/id_rsa.pub")
+module "bastion_server" {
+  source = "./modules/ec2"
+  
+  key_name = aws_key_pair.key_pair.key_name
+  subnet_id = module.vpc.public_subnets[0].id
+  ami_id =  var.instance_config.ami_id
+  instance_ebs_volume = var.instance_config.ebs_volume_size
+  instance_type = var.instance_config.instance_type
+  security_group_ids = [module.bastion_sg.id]
+  project_name = "hr_manager"
+
+
+ 
 }
 
-# ---------------- EC2 ----------------
-resource "aws_instance" "web" {
-  ami           = "ami-0ea87431b78a82070"
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.public.id
-  vpc_security_group_ids = [aws_security_group.web_sg.id]
-  key_name = aws_key_pair.deployer.key_name
-  tags = {
-    Name = "Terraform-Web"
+module "web_servers" {
+  source = "./modules/ec2"
+
+  for_each = {
+    web1 = {
+      ami_id          = "ami-123456"
+      instance_type   = "t2.micro"
+      ebs_volume_size = 8
+      subnet_index    = 0
+    }
+
+    web2 = {
+      ami_id          = "ami-123456"
+      instance_type   = "t2.micro"
+      ebs_volume_size = 8
+      subnet_index    = 1
+    }
   }
+
+  key_name = aws_key_pair.key_pair.key_name
+
+  subnet_id = module.vpc.private_subnets[each.value.subnet_index].id
+
+  ami_id              = each.value.ami_id
+  instance_ebs_volume = each.value.ebs_volume_size
+  instance_type       = each.value.instance_type
+
+  security_group_ids = [module.web_sg.id]
+
+  project_name = "web-${each.key}"
 }
+
+module "app_servers" {
+  source = "./modules/ec2"
+
+  for_each = {
+    web1 = {
+      ami_id          = "ami-123456"
+      instance_type   = "t2.micro"
+      ebs_volume_size = 8
+      subnet_index    = 0
+    }
+
+    web2 = {
+      ami_id          = "ami-123456"
+      instance_type   = "t2.micro"
+      ebs_volume_size = 8
+      subnet_index    = 1
+    }
+  }
+
+  key_name = aws_key_pair.key_pair.key_name
+
+  subnet_id = module.vpc.private_subnets[each.value.subnet_index].id
+
+  ami_id              = each.value.ami_id
+  instance_ebs_volume = each.value.ebs_volume_size
+  instance_type       = each.value.instance_type
+
+  security_group_ids = [module.web_sg.id]
+
+  project_name = "web-${each.key}"
+}
+
