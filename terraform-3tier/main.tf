@@ -86,7 +86,7 @@ module "bastion_server" {
   # instance_ebs_volume = var.instance_config.ebs_volume_size
   instance_ebs_volume = 8
   instance_type = var.instance_config.instance_type
-  security_group_ids = [module.sg.bastion_sg.id]
+  security_group_ids = [module.bastion_sg.id]
   project_name = "hr_manager"
 
 
@@ -120,7 +120,7 @@ module "web_servers" {
   instance_ebs_volume = each.value.ebs_volume_size
   instance_type       = each.value.instance_type
 
-  security_group_ids = [module.sg.web_sg.id]
+  security_group_ids = [module.web_sg.id]
 
   project_name = "web-${each.key}"
 }
@@ -152,7 +152,7 @@ module "app_servers" {
   instance_ebs_volume = each.value.ebs_volume_size
   instance_type       = each.value.instance_type
 
-  security_group_ids = [module.sg.web_sg.id]
+  security_group_ids = [module.web_sg.id]
 
   project_name = "web-${each.key}"
 }
