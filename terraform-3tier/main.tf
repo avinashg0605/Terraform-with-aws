@@ -194,3 +194,14 @@ module "alb" {
   public_subnets = module.vpc.public_subnets
   alb_sg         = module.sg.alb_sg
 }
+
+module "asg" {
+  source = "./modules/asg"
+
+  ami               = "ami-0ea87431b78a82070"   # Update later
+  instance_type     = "t2.micro"
+  subnets           = module.vpc.private_subnets
+  sg_id             = module.sg.web_sg
+  target_group_arn  = module.alb.web_target_group_arn
+  key_name          = aws_key_pair.key_pair.key_name
+}
