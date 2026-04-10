@@ -107,6 +107,87 @@ module "rds" {
 }
 
 
+module "vpc" {
+  source = "./modules/vpc"
 
+  vpc_cidr        = var.vpc_cidr
+  public_subnets  = var.public_subnets
+  private_subnets = var.private_subnets
+  db_subnets      = var.db_subnets
+  azs             = var.azs
+}
+
+module "sg" {
+  source = "./modules/security-groups"
+  vpc_id = module.vpc.vpc_id
+}
+
+module "alb" {
+  source = "./modules/alb"
+
+  vpc_id          = module.vpc.vpc_id
+  public_subnets  = module.vpc.public_subnets
+  private_subnets = module.vpc.private_subnets
+  alb_sg          = module.sg.alb_sg
+}
+
+module "web_asg" {
+  source = "./modules/asg"
+
+  # asg_name         = "Web-ASG"
+  ami              = var.ami
+  instance_type    = var.instance_type
+  subnets          = var.private_subnets
+  sg_id            = module.sg.web_sg
+  target_group_arn = module.alb.web_target_group_arn
+  key_name         = var.key_name
+  instance_name    = var.instance_name
+
+  user_data = <<-EOF
+              #!/bin/bash
+              yum install -y httpd
+              systemctl start httpd
+              echo "Web Tier" > /var/www/html/index.html
+              EOF
+}
+
+module "app_asg" {
+  source = "./modules/asg"
+
+  # asg_name         = "App-ASG"
+  ami              = var.ami
+  instance_type    = var.instance_type
+  subnets          = var.private_subnets
+  sg_id            = module.sg.app_sg
+  target_group_arn = module.alb.app_target_group_arn
+  key_name         = var.key_name
+  instance_name    = var.instance_name
+
+  user_data = <<-EOF
+              #!/bin/bash
+              yum install -y nodejs
+              npm install -g pm2
+              echo "App Tier running" > /home/ec2-user/app.txt
+              EOF
+}
+
+module "rds" {
+  source = "./modules/rds"
+
+  db_subnets  = module.vpc.db_subnets
+  db_sg       = module.sg.db_sg
+  db_username = var.db_username
+  db_password = var.db_password
+}
+
+module "bastion" {
+  source = "./modules/ec2"
+
+  ami           = var.ami
+  instance_type = var.instance_type
+  subnet_id     = module.vpc.public_subnets[0]
+  sg_id         = module.sg.bastion_sg
+  key_name      = var.key_name
+}
 
 
