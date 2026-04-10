@@ -1,4 +1,3 @@
-output "security_group_ids" {
+output "id" {
   value = aws_security_group.hr_sg.id
 }
-
