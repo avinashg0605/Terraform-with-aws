@@ -49,23 +49,49 @@ module "alb" {
   alb_sg          = module.sg.alb_sg
 }
 
-module "asg" {
+module "web_asg" {
   source = "./modules/asg"
 
-  ami               = "ami-0ea87431b78a82070"   # Update later
-  instance_type     = "t2.micro"
-  subnets           = module.vpc.private_subnets
-  sg_id             = module.sg.web_sg
-  target_group_arn  = module.alb.web_target_group_arn
-  key_name          = aws_key_pair.key_pair.key_name
+  ami              = "ami-0ea87431b78a82070"
+  instance_type    = "t2.micro"
+  subnets          = module.vpc.public_subnets
+  sg_id            = module.sg.web_sg
+  target_group_arn = module.alb.web_target_group_arn
+  key_name         = "your-key"
+
+  user_data = <<-EOF
+              #!/bin/bash
+              yum update -y
+              yum install -y httpd
+              systemctl start httpd
+              systemctl enable httpd
+              echo "<h1>Frontend</h1>" > /var/www/html/index.html
+              EOF
 }
+
 module "app_asg" {
   source = "./modules/asg"
 
-  ami               = "ami-0ea87431b78a82070"
-  instance_type     = "t2.micro"
-  subnets           = module.vpc.private_subnets
-  sg_id             = module.sg.app_sg
-  target_group_arn  = module.alb.app_target_group_arn
-  key_name          = aws_key_pair.key_pair.key_name
+  ami              = "ami-0ea87431b78a82070"
+  instance_type    = "t2.micro"
+  subnets          = module.vpc.private_subnets
+  sg_id            = module.sg.app_sg
+  target_group_arn = module.alb.app_target_group_arn
+  key_name         = "your-key"
+
+  user_data = <<-EOF
+              #!/bin/bash
+              yum update -y
+              yum install -y nodejs
+              npm install -g pm2
+
+              cat <<EOT > app.js
+              const http = require('http');
+              http.createServer((req,res)=>{
+                res.end("Hello from App Tier");
+              }).listen(3000);
+              EOT
+
+              pm2 start app.js
+              EOF
 }

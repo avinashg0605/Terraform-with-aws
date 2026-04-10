@@ -10,16 +10,7 @@ resource "aws_launch_template" "lt" {
     security_groups             = [var.sg_id]
   }
 
-  user_data = base64encode(<<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y httpd
-              systemctl start httpd
-              systemctl enable httpd
-              echo "<h1>Frontend</h1>" > /var/www/html/index.html
-              echo "<h2>Calling Backend...</h2>" >> /var/www/html/index.html
-              EOF
-  )
+  user_data = base64encode(var.user_data)
 }
 
 # Auto Scaling Group

@@ -6,3 +6,4 @@ variable "subnets" {
 variable "sg_id" {}
 variable "target_group_arn" {}
 variable "key_name" {}
+variable "user_data" {}
