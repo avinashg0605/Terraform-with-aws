@@ -1,4 +1,4 @@
-resource "aws_security_group" "this" {
+resource "aws_security_group" "hr_sg" {
   name   = var.sg_name
   vpc_id = var.vpc_id
 
