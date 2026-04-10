@@ -16,7 +16,8 @@ resource "aws_launch_template" "lt" {
               yum install -y httpd
               systemctl start httpd
               systemctl enable httpd
-              echo "<h1>Welcome from Web Tier</h1>" > /var/www/html/index.html
+              echo "<h1>Frontend</h1>" > /var/www/html/index.html
+              echo "<h2>Calling Backend...</h2>" >> /var/www/html/index.html
               EOF
   )
 }
