@@ -1,17 +1,17 @@
-# resource "tls_private_key" "generated" {
-#   algorithm = "RSA"
-#   rsa_bits  = 4096
-# }
+resource "tls_private_key" "generated" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
 
-# resource "aws_key_pair" "key_pair" {
-#   key_name   = "Hr_manager_bastion"
-#   public_key = tls_private_key.generated.public_key_openssh
-# }
+resource "aws_key_pair" "key_pair" {
+  key_name   = "bastion"
+  public_key = tls_private_key.generated.public_key_openssh
+}
 
-# resource "local_file" "private_key" {
-#   content  = tls_private_key.generated.private_key_pem
-#   filename = "Hr_manager_bastion.pem"
-# }
+resource "local_file" "private_key" {
+  content  = tls_private_key.generated.private_key_pem
+  filename = "bastion.pem"
+}
 
 # module "vpc" {
 #   source = "./modules/vpc"
@@ -175,4 +175,14 @@ module "sg" {
   source = "./modules/security-groups"
 
   vpc_id = module.vpc.vpc_id
+}
+
+module "bastion" {
+  source = "./modules/ec2"
+
+  ami           = "ami-0ea87431b78a82070"   # Amazon Linux (update later)
+  instance_type = "t2.micro"
+  subnet_id     = module.vpc.public_subnets[0]
+  sg_id         = module.sg.bastion_sg
+  key_name      = aws_key_pair.key_pair.key_name
 }
