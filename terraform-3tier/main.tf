@@ -186,3 +186,11 @@ module "bastion" {
   sg_id         = module.sg.bastion_sg
   key_name      = aws_key_pair.key_pair.key_name
 }
+
+module "alb" {
+  source = "./modules/alb"
+
+  vpc_id         = module.vpc.vpc_id
+  public_subnets = module.vpc.public_subnets
+  alb_sg         = module.sg.alb_sg
+}
