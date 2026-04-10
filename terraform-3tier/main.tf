@@ -57,8 +57,8 @@ module "web_asg" {
   subnets          = module.vpc.public_subnets
   sg_id            = module.sg.web_sg
   target_group_arn = module.alb.web_target_group_arn
-  key_name         = "your-key"
-
+  key_name         = aws_key_pair.key_pair.key_name
+  instance_name = "web-server"
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
@@ -77,7 +77,8 @@ module "app_asg" {
   subnets          = module.vpc.private_subnets
   sg_id            = module.sg.app_sg
   target_group_arn = module.alb.app_target_group_arn
-  key_name         = "your-key"
+  key_name         = aws_key_pair.key_pair.key_name
+  instance_name = "app-server"
 
   user_data = <<-EOF
               #!/bin/bash
@@ -94,4 +95,13 @@ module "app_asg" {
 
               pm2 start app.js
               EOF
+}
+
+module "rds" {
+  source = "./modules/rds"
+
+  db_subnets  = module.vpc.db_subnets
+  db_sg       = module.sg.db_sg
+  db_username = "admin"
+  db_password = "StrongPassword123"
 }

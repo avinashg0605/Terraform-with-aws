@@ -7,3 +7,6 @@ variable "sg_id" {}
 variable "target_group_arn" {}
 variable "key_name" {}
 variable "user_data" {}
+variable "instance_name" {
+  type = string
+}
