@@ -57,7 +57,7 @@ module "web_sg" {
   ingress_rules = [
     {
       from_port       = 80
-      security_groups = [module.alb_sg.id]
+      security_groups = [module.sg.alb_sg.id]
     }
   ]
 }
@@ -81,10 +81,12 @@ module "bastion_server" {
   
   key_name = aws_key_pair.key_pair.key_name
   subnet_id = module.vpc.public_subnets[0].id
-  ami_id =  var.instance_config.ami_id
-  instance_ebs_volume = var.instance_config.ebs_volume_size
+  # ami_id =  var.instance_config.ami_id
+  ami_id ="ami-0ea87431b78a82070"
+  # instance_ebs_volume = var.instance_config.ebs_volume_size
+  instance_ebs_volume = 8
   instance_type = var.instance_config.instance_type
-  security_group_ids = [module.bastion_sg.id]
+  security_group_ids = [module.sg.bastion_sg.id]
   project_name = "hr_manager"
 
 
@@ -96,14 +98,14 @@ module "web_servers" {
 
   for_each = {
     web1 = {
-      ami_id          = "ami-123456"
+      ami_id          = "ami-0ea87431b78a82070"
       instance_type   = "t2.micro"
       ebs_volume_size = 8
       subnet_index    = 0
     }
 
     web2 = {
-      ami_id          = "ami-123456"
+      ami_id          = "ami-0ea87431b78a82070"
       instance_type   = "t2.micro"
       ebs_volume_size = 8
       subnet_index    = 1
@@ -118,7 +120,7 @@ module "web_servers" {
   instance_ebs_volume = each.value.ebs_volume_size
   instance_type       = each.value.instance_type
 
-  security_group_ids = [module.web_sg.id]
+  security_group_ids = [module.sg.web_sg.id]
 
   project_name = "web-${each.key}"
 }
@@ -128,14 +130,14 @@ module "app_servers" {
 
   for_each = {
     web1 = {
-      ami_id          = "ami-123456"
+      ami_id          = "ami-0ea87431b78a82070"
       instance_type   = "t2.micro"
       ebs_volume_size = 8
       subnet_index    = 0
     }
 
     web2 = {
-      ami_id          = "ami-123456"
+      ami_id          = "ami-0ea87431b78a82070"
       instance_type   = "t2.micro"
       ebs_volume_size = 8
       subnet_index    = 1
@@ -150,7 +152,7 @@ module "app_servers" {
   instance_ebs_volume = each.value.ebs_volume_size
   instance_type       = each.value.instance_type
 
-  security_group_ids = [module.web_sg.id]
+  security_group_ids = [module.sg.web_sg.id]
 
   project_name = "web-${each.key}"
 }
