@@ -43,7 +43,7 @@ resource "aws_lb_listener" "http" {
 
 # Internal ALB (for App Tier)
 resource "aws_lb" "internal_alb" {
-  name               = "internal-alb"
+  name               = "app-alb"
   internal           = true
   load_balancer_type = "application"
   security_groups    = [var.alb_sg]
